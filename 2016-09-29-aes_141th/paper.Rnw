@@ -1,0 +1,293 @@
+% Template for non-peer-reviewed articled
+\documentclass[convention,e-brief]{aesconf}
+
+% Graphics path
+% UTF-8 encoding is recommended but use one that works for you.
+\usepackage[utf8]{inputenc}
+
+% Highly recommended package for better looking text automatically.
+\usepackage{microtype}
+
+% Natbib is used for more control on citations. You can use other moderd
+% bibliography packages but please try to match the provided style.
+\usepackage[numbers,square]{natbib} 
+
+% These are useful for different purposes.
+\usepackage{color}
+\usepackage{url}
+\usepackage[shortcuts]{extdash}
+\usepackage{float}
+\usepackage{units}
+%\usepackage{flushend}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[hidelinks]{hyperref}
+
+\urlstyle{same}
+\def\UrlFont{\em}
+
+% The full title of the paper
+\title{STEAK: Backward-compatible Spatial Telephone Conferencing for Asterisk}
+
+% Put the authors in order here. The number in brackets define the corresponding affiliation.
+\author{Dennis Guse}
+\author{Frank Haase}
+
+% Affiliations go here
+\affil{TU Berlin}
+
+
+
+% Correspondece should include the corresponding author's name and e-mail address
+\correspondence{Dennis Guse}{dennis.guse@alumni.tu-berlin.de}
+
+% These are used for headers. Anything that fits is okay. Please use proper punctuation.
+
+% If there are many authors, please use the form "First author et al."
+\lastnames{Guse and Haase}
+
+% Short title should describe your topic but not be too long.
+\shorttitle{Spatial Conferencing for Asterisk}
+
+% E-brief number if applicable
+\ebriefnumber{}
+
+% This is required and draws the top title
+\include{aestitle}
+
+\begin{document}
+
+\newcommand{\ie}{i.\,e.}
+\newcommand{\cf}{cf.}
+\newcommand{\eg}{e.\,g.} 
+
+\twocolumn[
+\maketitle % MANDATORY! 
+
+\begin{onecolabstract}
+In this paper, we present our implementation of a telephone conferencing system that renders a spatial representation via binaural synthesis.
+The implementation extends the open-source software Asterisk and complies with established \mbox{Voice-over-IP}~standards.
+The implementation only requires clients to be capable of receiving and reproducing the rendered binaural signals (two channels).
+Furthermore, the implementation is backward-compatible as clients not fulfilling these requirements are provided with mono-rendered signals without additional spatial information.
+The implemented system is released as open-source software and will enable researchers to investigate the \mbox{(dis-)advantages} of spatial conferencing under real-world conditions.
+
+The project name is \emph{Spatial TelephonE conferencing for AsterisK}~(STEAK)
+
+Website: \url{http://www.SteakConferencing.de}
+\end{onecolabstract}
+]
+
+\section{Introduction}
+Telephone conferences are an ubiquitous communication tool, for example, to coordinate distributed teams or communicate with remote business partners.
+A telephone conference provides a shared virtual space in which participants can communicate using audio in real time.
+As multiple participants interact via a shared virtual space, recognition of individual talkers and thus attribution of statements as well as listening to individual talkers in case of double talk are issues.
+These issues are especially problematic if the individual acoustical representation of the virtual shared space is rendered and transmitted as a mono signal (\ie,~downmixing the signals of all remote, speaking participants into one mono signal).
+In fact, the established telephony infrastructure is still mainly limited to the transmission of mono signals.
+Using this infrastructure for connectivity to a telephone conferencing system has the important advantages that \emph{(a)}~participants only need to have access to standardized, ubiquitous hardware and \emph{(b)}~can participate from almost anywhere.
+A mono representation might be sufficient, but it prevents exploiting the spatial hearing capability of humans (\cf{}~\cite{blauert_spatial_1996}).
+Advantages of exploiting spatial information has been shown to improve talker identification, talker recognition, and intelligibility (\eg,~\cite{mackeith_binaural_1971, ihlefeld_spatial_2008, drullman_multichannel_2000, kilgore_spatialized_2003}).
+Carefully positioning the individual participants in a spatial acoustical rendering of the virtual space, enables participants to experience the virtual space similar to a face-to-face meeting.
+One option to add spatial information is rendering the virtual space using binaural synthesis.
+%Here, the signals for the left ear and the right ear are rendered individually and both are presented via a pair of headphones to a listener. %(\cf{}~\cite{blauert_spatial_1996}).
+Here, the rendered signals are presented via a pair of headphones.
+
+In this paper, we present a production\-/ready telephone conferencing system with binaural synthesis based upon the open-source software Asterisk.
+Due to the implementation's compliance to established \emph{\mbox{Voice-over-IP}}~(VoIP) standards, it does not require proprietary technology and can be integrated into the existing telephony infrastructure.
+The system aims at closing the gap in research on spatial telephone conferencing.
+Research in this direction was so far limited as no production\-/ready system for centralized spatial conferencing was available as open-source software.
+Using proprietary systems has the disadvantages that the complete signal processing is often not publicly documented and in general cannot be modified if desired.
+This paper is structured as follows.
+First, we describe options for implementing a production\-/ready system with binaural synthesis as well as their \mbox{(dis-)advantages}.
+Second, we describe the implementation of the \emph{Spatial TelephonE conferencing for AsterisK}~(STEAK) in detail.
+Afterwards, the results of a performance evaluation with regard to delay of the implemented system is presented.
+This paper concludes with a summary and an outlook for future research on spatial telephone conferencing.
+
+%\cite{skowronek_assessment_2015}
+
+\section{Considerations for Spatial Conferencing}
+In the following, first the method of binaural synthesis is introduced briefly.
+Afterwards, the two contrasting topologies for rendering a telephone conference are presented and discussed.
+
+\subsection{Binaural Synthesis}
+A spatial representation of a virtual space can be created using binaural synthesis.
+In binaural synthesis, the signal of every sound source is rendered depending on their position in the acoustical space to be simulated and then all rendered signals are downmixed into one signal.
+This step is conducted for the left ear and right ear individually.
+The applied signal modifications might include \emph{Interaural Time Difference}, \emph{Interaural Level Difference}, spectral changes, and also simulation of a room (\ie, reverberation).
+These modifications are usually applied by convolving each source signal with the \emph{Head Related Transfer Functions}~(HRTFs) for the left ear and right ear.
+The rendered signals can then be presented using a pair of headphones and provide the impression of a virtual acoustical space.
+Often binaural synthesis is applied using HRTFs created with a dummy head (\ie, a human-like head with artificial ears).
+Although it has been shown that individualized HRTFs (\eg, accounting for individual shapes of the outer ear) improve the spatial representation slightly, it is often sufficient to use general HRTFs (\eg, \cite{moller_fundamentals_1992}).
+The spatial hearing capability of humans has two limitations.
+First, the angular resolution of a human observer is not uniform (\ie, highest resolution on the horizontal plane is achieved in front of the listener).
+Second, front\-/back confusion is problematic (\cf{}~\cite{blauert_spatial_1996}).
+Human listeners overcome these issues by actively exploring their acoustical environment (\ie, sampling the acoustical space over time by moving their head).
+For binaural synthesis, this requires that (a)~the movement of the head can be measured precisely enough and that (b)~the delay between changes in head position including head orientation and the update of the virtual acoustic space is low enough (\ie, below \unit[75]{ms} \cite{lindau_perception_2009}).
+
+\subsection{Telephone Conferencing Topologies}
+Telephone conferences can be created using either a decentralized topology or a centralized topology (\cf{} \cite{singh_centralized_2001}).
+A visualization of both topologies is shown in \autoref{fig:conference-topology}.
+In a decentralized topology, the signals of all clients are transmitted to all other clients while each client renders his representation of the virtual space himself.
+The major drawback of this topology is that increasing the number of clients results in an increase of the required network bandwidth while a low rendering delay can be achieved.
+In a centralized topology, rendering of the virtual space for each client is conducted by one central instance and the rendered signals are transmitted to each client.
+Thus, the central instance requires the network bandwidth, computational resources, and electric power for rendering while each client only needs to receive and reproduce his rendered signal.
+From the perspective of a client, participating in a centralized telephone conference is, in fact, not different to a one-to-one call.
+The central instance can also operate as a translator between different, incompatible technologies, such as signaling technologies (\eg, \emph{Session Initiation Protocol}~(SIP) and \emph{Web Real-Time Communication)} (WebRTC)) and media transmission technologies (\eg, used codecs).
+Due to these advantages, telephone conferencing systems are usually implemented using a centralized topology.
+
+\begin{figure}
+  \centering
+  \setlength{\belowcaptionskip}{-15pt}
+  \includegraphics[width=0.8\columnwidth]{figure/topology-conference}
+  \caption{Topologies for rendering a telephone conference including signal flow. Adapted from~\cite{spur_influence_2016}.}
+  \label{fig:conference-topology}
+\end{figure}
+
+With regard to the application of binaural synthesis, the centralized topology exhibits two inherent limitations.
+First, the central rendering increases the rendering delay due the required transmission of the rendered signals.
+Thus, using head tracking is hardly feasible as the upper boundary of the update delay (\ie, \unit[75]{ms}) is hard to fulfill.
+The second limitation is related to the transmission of the rendered signals.
+In addition to requiring the transmission of \emph{two} signals from the central instance to each client, the rendered signals need to be compressed to be suitable for transmission.
+In fact, compression might introduce artifacts in the binaurally rendered signals.
+This might negatively influence the spatial representation and also the perceived quality.
+Beside these limitations, a practical issue occurs if multiple participants use the same microphone (\eg, a conference phone).
+For spatial separation, the speech signal of these participants would need to be unmixed before applying binaural synthesis (\eg, \cite{raake_concept_2007}).
+However, the impact of the resulting artifacts in the unmixed source signals on binaural synthesis has been unknown.
+
+\section{Implementation}
+
+\begin{figure*}[!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figure/steak-rendering}
+  \caption{Exemplary overview of the internal signal flow within Asterisk for the binaural-capable conference renderer. Only signal flow from client~A and client~B towards the binaural-capable client~C are depicted.}
+  \label{fig:asterisk-spatial-signal}
+\end{figure*}
+
+In the following, the design aspects and implementation details of the here presented telephone conferencing system are explained.
+The major goal of the implementation was to create a spatial conferencing system that can be integrated into the established ecosystem of telephony technology while not requiring specialized (\ie, standard-incompatible) clients.
+This system uses a centralized topology to avoid the network bandwidth issue and can thus act as a translator between different technologies.
+This allows users to select their desired connecting technology depending on their current situation.
+An issue for the implementation is the transmission of binaurally rendered signals as the established telephony infrastructure is limited to mono.
+This can be overcome by \emph{(a)}~using two separate transmission channels in parallel or \emph{(b)}~using a single binaural\-/capable transmission channel.
+While (a)~is technically feasible it requires to carefully synchronize both transmission channels.
+In addition, this might introduce undesired effects due to differences in degradations on each transmission channel (\eg, packet-loss \cite{spur_influence_2016}).
+Using a binaural-capable transmission channel avoids these complex issues while it requires the availability of such a channel.
+Although not widely used, the \emph{Real-Time Transport Protocol}~(RTP), which is the common basis for media transmission in VoIP, allows the transmission of binaural signals (\ie, two channels) over one transmission channel.
+However, this functionality is only implemented for a limited number of codecs.
+One of these codecs is Opus~(\cite{spittka_rtp_2015}), which is a relatively new, versatility, low-latency codec that is royalty-free and open-source.
+Opus is the de facto standard for audio transmission using WebRTC.
+
+As basis for the implementation, the open\=/source software \emph{Asterisk}~(\url{http://www.asterisk.org}) was selected.
+Asterisk forms the perfect platform for the implementation, as it \emph{(a)}~provides connectivity to a wide range of telephony technologies, \emph{(b)} can translate between different technologies, and \emph{(c)}~provides out\=/of\=/the\=/box the functionality to create \emph{non-}spatial telephone conferences (\ie, downmixing to mono).
+%For practical use (\ie, deployment for real use), it is important to note that Asterisk is capable handle several telephone calls in parallel.
+For spatial conferencing via binaural synthesis, Asterisk was extended with four features.
+First, the internal signal processing was enhanced by the capability to process two-channel signals.
+Second, the default conference renderer was modified, so it can handle mono signals and two-channel signals while applying binaural synthesis for binaural-capable transmission channels.
+Binaural synthesis was implemented using the open\=/source library \emph{FFTW}~(\url{http://www.fftw.org}).
+This library implements Fourier transformation and is compatible to the software license of Asterisk (\ie, \emph{GNU General Public License}).
+Third, the codec Opus including two-channel support was added to Asterisk.
+Fourth, the two-channel support has been enabled for SIP including SIP\=/over\=/WebRTC.
+In fact, the signaling remains in full compliance to SIP. 
+To receive a binaural representation, a client needs to connect to the enhanced Asterisk and to announce support for two-channel-capable codecs via \emph{Session Description Protocol}~(SDP).
+Therefore, any SIP client implementing Opus with two-channel support is supported.
+Note that the conference renderer is decoupled from the actual transmission technology.
+An exemplary overview of the signal flow for spatial conferencing is shown in \autoref{fig:asterisk-spatial-signal}.
+A client can interact with the conference renderer by using \emph{dual-tone multi-frequency signaling}~(DTMF).
+This allows clients to enable and disable binaural synthesis as well as change the layout of the virtual conference space.
+
+\subsection{Performance Evaluation}
+The performance of the implementation, based upon Asterisk~13.6.0 and FFTW~3.3.4, was evaluated on a computer (Intel Core i7\=/4790 at \unit[4]{GHz}) running Ubuntu~Linux~16.04~(64bit). %, \unit[32]{GB} DDR3\=/1866 CL\=/10
+This evaluation focused on the processing delay of the binaural synthesis while omitting coding and transmission.
+Binaural synthesis was conducted at \unit[48]{kHz} with a block size of \unit[20]{ms} while rendering one virtual acoustical space for each telephone conference (\ie, one representation for all participants).
+%Per participant the binaural-capable renderer requires additional \unit[0.21]{MB}.
+\autoref{fig:measurements} shows the results for the default implementation as well as one binaural renderer and two binaural renderers (1000 iterations; \unit[2]{s} of babble noise). 
+Note that Asterisk executes each conference renderer instance in one thread.
+Thus, parallelism can only be exploited using multiple renderers (\ie, multiple conferences in parallel).
+While the default renderer performs nearly constant, the binaural renderer adds delay approx. in a linear manner.
+For the binaural renderer, the processing delay is satisfying up to 80 \emph{actively speaking} participants in one conference (\unit[18]{ms}).
+After that, it might become problematic as the processing delay adds to the end-to-end delay and thus might negatively affect the perceived quality.
+
+\begin{figure}[h!]
+  \centering
+  \setlength{\belowcaptionskip}{-15pt}
+	<<plotMeasurements, echo=F, fig.height=2.5>>=
+opts_knit$set(progress = TRUE, verbose = TRUE)
+    
+suppressMessages(library(ggplot2))
+suppressMessages(library(grid))
+
+data = read.csv("measurements.csv")
+data$avg = data$avg * 1e-6
+data$sd = data$sd * 1e-6
+data$asterisk = factor(data$asterisk, labels=c("Default", "Binaural (One)", "Binaural (Two)"))
+attach(data)
+
+p <- ggplot(data, aes(x=clients, y=avg))
+
+p <- p + geom_line(aes(colour = asterisk, linetype=asterisk), size=1.5)
+# + geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd, colour=asterisk), width=2)
+p <- p + scale_linetype_manual(name="Renderer", values=c("solid", "dashed", "dashed"))
+p <- p + geom_point(aes(shape = asterisk, colour = asterisk), size=3.5)
+p <- p + scale_shape_manual(name="Renderer", values=c(20, 15, 18))
+p <- p + scale_color_manual(name="Renderer",values=c("#c82505", "#0264c0", "black"))
+p <- p + scale_x_discrete(breaks=c("0", "20","40","60", "80", "100"))
+
+p <- p + theme(text=element_text(family="Palatino", size=18))
+p <- p + theme(strip.background = element_rect(colour="white", fill="white"), strip.text=element_text(size=12)) 
+
+p <- p + theme(panel.background=element_rect(fill="white", color="white"))
+# p <- p + theme(plot.background=element_rect(fill="white", color="white"))
+#p <- p + theme(panel.border=element_rect(color="white"))
+p <- p + theme(panel.grid.major=element_line(color="darkgray",size=.25))
+p <- p + theme(panel.grid.minor=element_line(color="gray",size=.25))
+
+p <- p + xlab("Number of participants")
+p <- p + ylab("Delay (ms)")
+p <- p + theme(axis.text.x=element_text(colour="black"))
+p <- p + theme(axis.text.y=element_text(colour="black"))
+p <- p + theme(axis.title.y=element_text(vjust=1))
+p <- p + theme(plot.margin = unit(x = c(0, .5, -.5, 0), units = "cm"))
+
+p <- p + theme(legend.position="top", legend.key = element_rect(fill = "white"))
+#p <- p + theme(legend.key.size = unit(0.8, units="cm"))
+p <- p + theme(legend.position="bottom")
+p
+  @
+  \caption{Rendering delay for the default renderer and the binaural renderer by number of participants.}
+  \label{fig:measurements}
+\end{figure}
+
+
+\section{Conclusion \& Future Work}
+In this paper, we presented our enhancement (\ie, spatial conferencing via binaural synthesis) to Asterisk.
+Although, the implementation as a central renderer has drawbacks (\eg, accounting for head movements is not timely feasible), it is advantageous as clients only need to be capable of receiving and reproducing binaurally-rendered signals.
+Most important, the implementation is backward\-/compatible as mono-capable clients (without binaural synthesis) and binaural-capable clients can participate in the same telephone conference.
+In addition, the presented implementation complies to VoIP standards.
+We hope that the open-source release of our implementation will stimulate future research on spatial conferencing especially with regard to the \mbox{(dis-)advantages} and limitations under real-world conditions.
+Two important aspects are not yet completely solved in this domain.
+First, how to position individual participants in the virtual space and how to adjust positions if participants join or leave an ongoing telephone conference.
+Initial work has been conducted for positioning (\eg, \cite{hyder_placing_2010}) and also algorithms for repositioning have been investigated (\eg, \cite{roegiers_dynamical_2012}).
+However, these investigations were limited and not conducted under real-world conditions.
+Second, the quality of the recording at the client-side might be problematic.
+Degradations resulting from the recording equipment as well as recording environment are very likely to occur under real-world use.
+This might include low-budget microphones, background noise, and reverberation.
+In fact, binaural synthesis is applied in general using signals acquired under anechoic conditions while often using high\=/end equipment.
+The presence of recording-related degradations might negatively influence the result of the binaural synthesis with regard to spatial representation and also perceived quality.
+This might, in fact, be problematic for the user acceptance.
+The impact of recording-related degradations and their impact has to the authors knowledge not been investigated.
+In addition, also degradations due to transmission of the signals must be considered. 
+Beside packet-loss, where initial work has been conducted \cite{spur_influence_2016}, also the impact of applying lossy compression on binaurally rendered signals has only received limited attention (\eg, \cite{katz_effect_2006}).
+
+The system presented here provides an excellent platform for further research on spatial conferencing in laboratory environments and field studies.
+Moreover, the system is ready for productive use and thus allows for \emph{really} experiencing spatial conferencing in practice.
+
+%Wrong headphone compensation
+
+\subsection*{Acknowledgements}
+We would like to thank Prof.~\mbox{Dr.-Ing.}~Alexander~Raake and Janto~Skowronek (both TU~Illmenau) for introducing us to the topic of spatial telephone conferencing as well as Prof.~\mbox{Dr.-Ing.}~Jens~Ahrens (Chalmers University of Technology) and Dr.~Hagen~Wierstorf (TU~Berlin) for providing us practical, hands-on knowledge on binaural synthesis.
+%We would like to thank Alexander~Raake, Janto~Skowronek, Jens~Ahrens, and Hagen~Wierstorf for their support.
+The project received funding by the German Federal Ministry of Education and Research in context of the SoftwareCampus program (grant number 01IS11556).
+
+\bibliographystyle{jaes}
+
+\bibliography{Bibliography}
+\end{document}
