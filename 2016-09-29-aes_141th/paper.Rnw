@@ -127,7 +127,8 @@ For binaural synthesis, this requires that (a)~the movement of the head can be m
 Telephone conferences can be created using either a decentralized topology or a centralized topology (\cf{} \cite{singh_centralized_2001}).
 A visualization of both topologies is shown in \autoref{fig:conference-topology}.
 In a decentralized topology, the signals of all clients are transmitted to all other clients while each client renders his representation of the virtual space himself.
-The major drawback of this topology is that increasing the number of clients results in an increase of the required network bandwidth while a low rendering delay can be achieved.
+The major drawback of this topology is that increasing the number of clients results in an increase of the required network bandwidth.
+However, this topology allows to achieve a low rendering delay.
 In a centralized topology, rendering of the virtual space for each client is conducted by one central instance and the rendered signals are transmitted to each client.
 Thus, the central instance requires the network bandwidth, computational resources, and electric power for rendering while each client only needs to receive and reproduce his rendered signal.
 From the perspective of a client, participating in a centralized telephone conference is, in fact, not different to a one-to-one call.
@@ -138,13 +139,13 @@ Due to these advantages, telephone conferencing systems are usually implemented 
   \centering
   \setlength{\belowcaptionskip}{-15pt}
   \includegraphics[width=0.8\columnwidth]{figure/topology-conference}
-  \caption{Topologies for rendering a telephone conference including signal flow. Adapted from~\cite{spur_influence_2016}.}
+  \caption{Topologies for rendering a telephone conference including signal flow (adapted from~\cite{spur_influence_2016}).}
   \label{fig:conference-topology}
 \end{figure}
 
 With regard to the application of binaural synthesis, the centralized topology exhibits two inherent limitations.
 First, the central rendering increases the rendering delay due the required transmission of the rendered signals.
-Thus, using head tracking is hardly feasible as the upper boundary of the update delay (\ie, \unit[75]{ms}) is hard to fulfill.
+Thus, using head tracking is hardly feasible as the upper boundary of the rendering delay (\ie, \unit[75]{ms}) is hard to fulfill.
 The second limitation is related to the transmission of the rendered signals.
 In addition to requiring the transmission of \emph{two} signals from the central instance to each client, the rendered signals need to be compressed to be suitable for transmission.
 In fact, compression might introduce artifacts in the binaurally rendered signals.
@@ -202,7 +203,7 @@ Binaural synthesis was conducted at \unit[48]{kHz} with a block size of \unit[20
 \autoref{fig:measurements} shows the results for the default implementation as well as one binaural renderer and two binaural renderers (1000 iterations; \unit[2]{s} of babble noise). 
 Note that Asterisk executes each conference renderer instance in one thread.
 Thus, parallelism can only be exploited using multiple renderers (\ie, multiple conferences in parallel).
-While the default renderer performs nearly constant, the binaural renderer adds delay approx. in a linear manner.
+While the default renderer performs nearly constant, the binaural renderer adds delay approximately in a linear manner.
 For the binaural renderer, the processing delay is satisfying up to 80 \emph{actively speaking} participants in one conference (\unit[18]{ms}).
 After that, it might become problematic as the processing delay adds to the end-to-end delay and thus might negatively affect the perceived quality.
 
